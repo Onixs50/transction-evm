@@ -11,3 +11,7 @@ sudo apt-get install wget
 ```bash
 wget -O tx.py https://raw.githubusercontent.com/Onixs50/transction-evm/main/tx.py
 ```
+## 3
+```bash
+python3 tx.py
+```
