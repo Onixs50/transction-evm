@@ -23,6 +23,11 @@ def display_header():
     print(HEADER)
     print(Fore.GREEN + "=" * 70 + Style.RESET_ALL + "\n")
 
+def ensure_file_exists(filename, content=''):
+    if not os.path.exists(filename):
+        with open(filename, 'w') as f:
+            f.write(content)
+
 def save_config(rpc_url, chain_id, block_explorer):
     config = {'rpc_url': rpc_url, 'chain_id': chain_id, 'block_explorer': block_explorer}
     with open(CONFIG_FILE, 'w') as f:
@@ -40,8 +45,10 @@ def save_private_keys(private_keys):
             f.write(key + '\n')
 
 def load_private_keys():
-    with open(PRIVATE_KEYS_FILE, 'r') as f:
-        return [line.strip() for line in f.readlines()]
+    if os.path.exists(PRIVATE_KEYS_FILE):
+        with open(PRIVATE_KEYS_FILE, 'r') as f:
+            return [line.strip() for line in f.readlines()]
+    return []
 
 def get_user_input():
     rpc_url = input(Fore.CYAN + "Enter the RPC URL: " + Style.RESET_ALL)
@@ -124,7 +131,11 @@ def get_config():
 def main():
     display_header()
     
+    ensure_file_exists(CONFIG_FILE)
+    ensure_file_exists(PRIVATE_KEYS_FILE)
+    
     rpc_url, chain_id, block_explorer = get_config()
+    save_config(rpc_url, chain_id, block_explorer)
 
     w3 = Web3(Web3.HTTPProvider(rpc_url))
     if not w3.is_connected():
