@@ -32,8 +32,11 @@ def save_config(rpc_url, chain_id, block_explorer):
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            print(Fore.RED + "Error reading JSON file. The file may be corrupted or empty." + Style.RESET_ALL)
     return None
 
 def save_private_keys(private_keys):
@@ -106,8 +109,10 @@ def get_config():
         use_previous = input(Fore.CYAN + "Do you want to use the previous configuration? (y/n): " + Style.RESET_ALL).lower()
         if use_previous == 'y':
             return config['rpc_url'], config['chain_id'], config['block_explorer']
-    
-    return get_user_input()
+        else:
+            return get_user_input()
+    else:
+        return get_user_input()
 
 def main():
     display_header()
