@@ -13,5 +13,6 @@ git clone https://github.com/Onixs50/transction-evm transction-evm
 ```
 ## 3
 ```bash
+cd transction-evm
 python3 main.py
 ```
