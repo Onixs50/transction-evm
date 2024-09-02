@@ -32,11 +32,12 @@ def save_config(rpc_url, chain_id, block_explorer):
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r') as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            print(Fore.RED + "Error reading JSON file. The file may be corrupted or empty." + Style.RESET_ALL)
+        with open(CONFIG_FILE, 'r') as f:
+            content = f.read().strip()
+            if content:  # Check if file is not empty
+                return json.loads(content)
+            else:
+                return None
     return None
 
 def save_private_keys(private_keys):
@@ -83,12 +84,15 @@ def send_transactions(w3, from_account, to_addresses, amount_range, chain_id, de
     nonce = w3.eth.get_transaction_count(from_account.address)
     for i, to_address in enumerate(to_addresses, 1):
         try:
-            # Generate random amount and delay
+            balance = w3.eth.get_balance(from_account.address)
+            balance_eth = w3.from_wei(balance, 'ether')
+            print(f"\n{Fore.YELLOW}Wallet {from_account.address} Balance: {balance_eth:.6f} ETH{Style.RESET_ALL}")
+
             amount = random.uniform(*amount_range)
             delay = random.uniform(*delay_range) * 60  # Convert minutes to seconds
             
             tx_hash = send_transaction(w3, from_account, to_address, amount, nonce, chain_id, gas_price, gas_limit)
-            print(f"{Fore.GREEN}Transaction {i} sent:{Style.RESET_ALL}")
+            print(f"{Fore.GREEN}Transaction {i} sent from wallet {from_account.address}:{Style.RESET_ALL}")
             print(f"  {Fore.CYAN}To:{Style.RESET_ALL} {to_address}")
             print(f"  {Fore.CYAN}Amount:{Style.RESET_ALL} {amount:.6f} ETH")
             print(f"  {Fore.CYAN}Transaction Hash:{Style.RESET_ALL} {tx_hash.hex()}")
@@ -109,15 +113,15 @@ def get_config():
         use_previous = input(Fore.CYAN + "Do you want to use the previous configuration? (y/n): " + Style.RESET_ALL).lower()
         if use_previous == 'y':
             return config['rpc_url'], config['chain_id'], config['block_explorer']
-        else:
-            return get_user_input()
-    else:
-        return get_user_input()
+    
+    return get_user_input()
 
 def main():
     display_header()
     
     rpc_url, chain_id, block_explorer = get_config()
+
+    save_config(rpc_url, chain_id, block_explorer)
 
     w3 = Web3(Web3.HTTPProvider(rpc_url))
     if not w3.is_connected():
@@ -131,20 +135,15 @@ def main():
         if continue_anyway != 'y':
             return
 
-    # Ask user for number of private keys
     num_keys = int(input(Fore.CYAN + "How many private keys do you want to add? " + Style.RESET_ALL))
     private_keys = [input(f"{Fore.CYAN}Enter private key {i + 1}: " + Style.RESET_ALL) for i in range(num_keys)]
 
-    # Save private keys to a file
     save_private_keys(private_keys)
 
-    # Ask user for the number of transactions per private key
     tx_per_key = int(input(Fore.CYAN + "How many transactions per private key? " + Style.RESET_ALL))
 
-    # Ask user for the number of wallets to generate per private key
     num_wallets_per_key = int(input(Fore.CYAN + "How many new wallets to generate per private key? " + Style.RESET_ALL))
 
-    # Ask user for the amount range and delay range
     min_amount = float(input(Fore.CYAN + "Enter minimum amount of ETH to send (inclusive): " + Style.RESET_ALL))
     max_amount = float(input(Fore.CYAN + "Enter maximum amount of ETH to send (inclusive): " + Style.RESET_ALL))
     amount_range = (min_amount, max_amount)
@@ -153,28 +152,20 @@ def main():
     max_delay = float(input(Fore.CYAN + "Enter maximum delay between transactions in minutes (inclusive): " + Style.RESET_ALL))
     delay_range = (min_delay, max_delay)
 
-    display_header()  # Clear screen and show header again before starting operations
+    gas_price, gas_limit = get_gas_settings(w3)
+
+    display_header()
 
     try:
-        for private_key in private_keys:
-            from_account = Account.from_key(private_key)
-            gas_price, gas_limit = get_gas_settings(w3)
+        while True:
+            for private_key in private_keys:
+                from_account = Account.from_key(private_key)
+                to_addresses = [Account.create().address for _ in range(num_wallets_per_key)]
+                for _ in range(tx_per_key):
+                    send_transactions(w3, from_account, to_addresses, amount_range, chain_id, delay_range, block_explorer, gas_price, gas_limit)
+                print(f"{Fore.YELLOW}Completed transactions for wallet {from_account.address}.{Style.RESET_ALL}")
+    except KeyboardInterrupt:
+        print(Fore.RED + "Process interrupted by user. Exiting..." + Style.RESET_ALL)
 
-            for _ in range(tx_per_key):
-                # Generate new wallets
-                with ThreadPoolExecutor() as executor:
-                    new_wallets = list(executor.map(lambda _: Account.create(), range(num_wallets_per_key)))
-                
-                to_addresses = [wallet.address for wallet in new_wallets]
-                send_transactions(w3, from_account, to_addresses, amount_range, chain_id, delay_range, block_explorer, gas_price, gas_limit)
-                print(f"\n{Fore.GREEN}Transactions for wallet {from_account.address} completed.{Style.RESET_ALL}")
-
-            print("\nNew wallet addresses:")
-            for i, wallet in enumerate(new_wallets, 1):
-                print(f"Wallet {i}: {wallet.address}")
-
-    except Exception as e:
-        print(Fore.RED + f"An error occurred: {e}" + Style.RESET_ALL)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
