@@ -9,7 +9,7 @@ sudo apt-get install wget
 ```
 ## 2
 ```bash
-wget -O tx.py https://raw.githubusercontent.com/Onixs50/transction-evm/main/tx.py
+git clone https://github.com/Onixs50/transction-evm transction-evm
 ```
 ## 3
 ```bash
