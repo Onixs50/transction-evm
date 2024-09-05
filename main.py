@@ -2,7 +2,6 @@ import json
 import os
 import time
 import random
-from concurrent.futures import ThreadPoolExecutor
 from web3 import Web3
 from eth_account import Account
 from colorama import Fore, Style, init
@@ -100,6 +99,11 @@ def send_transactions(w3, from_account, to_addresses, amount_range, chain_id, de
                 print(f"  {Fore.CYAN}Block Explorer Link:{Style.RESET_ALL} {block_explorer}{tx_hash.hex()}")
             print(Fore.GREEN + "-" * 20 + Style.RESET_ALL)
             nonce += 1
+            
+            # Calculate and display time for next transaction
+            minutes_remaining = delay / 60
+            print(f"{Fore.YELLOW}Next transaction will be sent in approximately {minutes_remaining:.2f} minutes.{Style.RESET_ALL}")
+            
             time.sleep(delay)  # delay is now in seconds
         except Exception as e:
             print(f"{Fore.RED}Transaction {i} failed:{Style.RESET_ALL}")
@@ -120,7 +124,6 @@ def main():
     display_header()
     
     rpc_url, chain_id, block_explorer = get_config()
-
     save_config(rpc_url, chain_id, block_explorer)
 
     w3 = Web3(Web3.HTTPProvider(rpc_url))
@@ -135,19 +138,25 @@ def main():
         if continue_anyway != 'y':
             return
 
-    num_keys = int(input(Fore.CYAN + "How many private keys do you want to add? " + Style.RESET_ALL))
-    private_keys = [input(f"{Fore.CYAN}Enter private key {i + 1}: " + Style.RESET_ALL) for i in range(num_keys)]
-
-    save_private_keys(private_keys)
+    if os.path.exists(PRIVATE_KEYS_FILE):
+        use_previous_keys = input(Fore.CYAN + "Previous private keys found. Do you want to use them? (y/n): " + Style.RESET_ALL).lower()
+        if use_previous_keys == 'y':
+            with open(PRIVATE_KEYS_FILE, 'r') as f:
+                private_keys = [line.strip() for line in f.readlines()]
+        else:
+            num_keys = int(input(Fore.CYAN + "How many new private keys do you want to add? " + Style.RESET_ALL))
+            private_keys = [input(f"{Fore.CYAN}Enter private key {i + 1}: " + Style.RESET_ALL) for i in range(num_keys)]
+            save_private_keys(private_keys)
+    else:
+        num_keys = int(input(Fore.CYAN + "How many private keys do you want to add? " + Style.RESET_ALL))
+        private_keys = [input(f"{Fore.CYAN}Enter private key {i + 1}: " + Style.RESET_ALL) for i in range(num_keys)]
+        save_private_keys(private_keys)
 
     tx_per_key = int(input(Fore.CYAN + "How many transactions per private key? " + Style.RESET_ALL))
-
     num_wallets_per_key = int(input(Fore.CYAN + "How many new wallets to generate per private key? " + Style.RESET_ALL))
-
     min_amount = float(input(Fore.CYAN + "Enter minimum amount of ETH to send (inclusive): " + Style.RESET_ALL))
     max_amount = float(input(Fore.CYAN + "Enter maximum amount of ETH to send (inclusive): " + Style.RESET_ALL))
     amount_range = (min_amount, max_amount)
-
     min_delay = float(input(Fore.CYAN + "Enter minimum delay between transactions in minutes (inclusive): " + Style.RESET_ALL))
     max_delay = float(input(Fore.CYAN + "Enter maximum delay between transactions in minutes (inclusive): " + Style.RESET_ALL))
     delay_range = (min_delay, max_delay)
