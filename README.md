@@ -3,9 +3,10 @@
 ## 1
 ```bash
 apt install python3-pip
-pip install colorama
 pip install termcolor
-pip install web3
+pip install web3==6.0.0
+pip install eth-account==0.8.0
+pip install colorama==0.4.6
 ```
 ## 2
 ```bash
